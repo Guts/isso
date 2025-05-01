@@ -67,7 +67,7 @@ from isso.wsgi import origin, urlsplit
 from isso.utils import http, JSONRequest, JSONResponse, html, hash
 from isso.views import comments
 
-from isso.ext.notifications import Stdout, SMTP
+from isso.ext.notifications import Stdout, SMTP, Webhook
 
 LOG_FORMAT = "%(asctime)s:%(levelname)s: %(message)s"
 logging.getLogger('werkzeug').setLevel(logging.WARN)
@@ -114,6 +114,8 @@ class Isso(object):
                 subscribers.append(Stdout(self))
             elif backend in ("smtp", "SMTP"):
                 smtp_backend = True
+            elif backend.lower() == "webhook":
+                subscribers.append(Webhook(self))
             else:
                 logger.warning("unknown notification backend '%s'", backend)
         if smtp_backend or conf.getboolean("general", "reply-notifications"):

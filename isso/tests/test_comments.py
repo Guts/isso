@@ -938,3 +938,43 @@ class TestPurgeComments(unittest.TestCase):
         self.client.post('/new?uri=test', data=json.dumps({"text": "..."}))
         self.app.db.comments.purge(3600)
         self.assertEqual(self.client.get('/id/1').status_code, 200)
+
+
+
+class TestNotifications(unittest.TestCase):
+
+    def setUp(self):
+        fd, self.path = tempfile.mkstemp()
+        conf = config.load(config.default_file())
+        conf.set("general", "dbpath", self.path)
+        conf.set("guard", "enabled", "off")
+        conf.set("hash", "algorithm", "none")
+        conf.set("general", "latest-enabled", "true")
+        self.conf = conf
+
+        class App(Isso, core.Mixin):
+            pass
+
+        self.app = App(conf)
+        self.app.wsgi_app = FakeIP(self.app.wsgi_app, "192.168.1.1")
+
+        self.client = JSONClient(self.app, Response)
+        self.get = self.client.get
+        self.put = self.client.put
+        self.post = self.client.post
+        self.delete = self.client.delete
+
+    def tearDown(self):
+        os.unlink(self.path)
+
+    def testGet(self):
+
+        self.post('/new?uri=%2Fpath%2F',
+                  data=json.dumps({'text': 'Lorem ipsum ...'}))
+        r = self.get('/id/1')
+        self.assertEqual(r.status_code, 200)
+
+        rv = loads(r.data)
+
+        self.assertEqual(rv['id'], 1)
+        self.assertEqual(rv['text'], '<p>Lorem ipsum ...</p>')
